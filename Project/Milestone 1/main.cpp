@@ -31,14 +31,23 @@ int main() {
         electronPos[i][1] = randomPos();
     }
 
+    for (int i = 0; i < numElectrons; ++i) {
+        std::cout << "(";
+        std::cout << std::setprecision(15) << electronPos[i][0];
+        std::cout << ",";
+        std::cout << std::setprecision(15) << electronPos[i][1];
+        std::cout << ")"<<std::endl;
+    }
+    std::cout << "moving" << std::endl;
+
     for (int f = 0; f < 100; ++f) {
 
         // calculate each probability of each atom
         // if thingy change
         // calculate energy???????
         for (int i = 0; i < numElectrons; ++i) {
-            int xComponent = 0;
-            int yComponent = 0;
+            float xComponent = 0;
+            float yComponent = 0;
             for (int j = 0; j < numElectrons; ++ j) {
                 // std::cout << i << " " << j << std::endl;
                 if (i == j) {
@@ -48,15 +57,25 @@ int main() {
                 const float yDiff = electronPos[j][1] - electronPos[i][1];
 
                 const float distance = hypot(xDiff, yDiff);
+                // copilot used to fix my bad math
+                // and liv for figuring out that my force is 0ed
 
-                const float forceMag = 8.987 * pow(10,19) * (pow((1.602*pow(10, -19)), 2) / distance != 0 ? distance : 1);
+                const float k = 8.987 * pow(10, 9);
+                const float e = 1.602 * pow(10, -19);
+                float forceMag = k * (pow(e, 2) / pow(distance == 0 ? std::numeric_limits<float>::infinity() : distance, 2));
 
-                xComponent = xComponent + xDiff != 0 ? cos(xDiff / distance) : 1 * forceMag;
-                yComponent = yComponent + yDiff != 0 ? cos(yDiff / distance) : 1 * forceMag;
-                std::cout << xComponent << " " << yComponent << std::endl;
+                const float angle = atan2(yDiff, xDiff);
+                xComponent += cos(angle) * forceMag;
+                yComponent += sin(angle) * forceMag;
+                //std::cout << "Force magnitude: " << forceMag << std::endl;
+                //std::cout << "X Component: " << xComponent << " Y Component: " << yComponent << std::endl;
             }
+            // std::cout << "Force magnitude: " << forceMag << std::endl;
+            std::cout << "X Component: " << xComponent << " Y Component: " << yComponent << std::endl;
+
             electronPos[i][0] += xComponent;
             electronPos[i][1] += yComponent;
+            std::cout << "Set X Component: " << electronPos[i][0] << " Set Y Component: " << electronPos[i][1] << std::endl;
         } 
 
     }
