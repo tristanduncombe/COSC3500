@@ -25,12 +25,13 @@ int main() {
     float** electronPos = (float**) malloc(sizeof (float**) * 100);
     float* electronVel = (float*) malloc(sizeof (float*) * 100);
     std::cout << "[" << std::endl; 
+    std::cout << "[" << std::endl; 
     // creating start positions  
     for (int i = 0; i < numElectrons; ++i) {
         electronPos[i] = (float *) malloc(sizeof (float*) * 3);
-        electronPos[i][0] = static_cast<float>(randomPos());
-        electronPos[i][1] = static_cast<float>(randomPos());
-        electronPos[i][2] = static_cast<float>(randomPos());
+        electronPos[i][0] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);;
+        electronPos[i][1] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);;
+        electronPos[i][2] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);;
         electronVel[i] = 0;
     }
 
@@ -50,7 +51,7 @@ int main() {
             }
     }
     std::cout << "]," << std::endl;
-    int numFrames = 1000;
+    int numFrames = 100;
     for (int f = 0; f < numFrames; ++f) {
 
         // calculate each probability of each atom
@@ -127,7 +128,7 @@ int main() {
             std::cout << "]," << std::endl;
         }
     }
-    
+    std::cout << "]" << std::endl; 
     // return it
     return 0;
 }
