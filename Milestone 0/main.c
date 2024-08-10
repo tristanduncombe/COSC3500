@@ -28,7 +28,7 @@ int main(int width, int height, int loops) {
 
     printf("%f", atomGrid);
 
-    float electronPos[100] = []
+    float electronPos[100] = [];
 
     for (int i = 0; i < loops; ++i) {
 
