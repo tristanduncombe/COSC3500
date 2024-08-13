@@ -20,7 +20,7 @@ int randomPos() {
 
 int main() {
     int numElectrons = 1000;
-    int numFrames = 100;
+    int numFrames = 1000000;
     
     // creating start positions  
     float** electronPos = (float**)malloc(sizeof(float*) * numElectrons);
@@ -74,7 +74,7 @@ int main() {
                 const float m = 9.1093837 * pow(10,-31);
                 const float k = 8.987 * pow(10, 9);
                 const float e = 1.602 * pow(10, -19);
-                const float t = 0.01;
+                const float t = 0.00001;
                 float forceMag = k * (pow(e, 2) / pow(distance == 0 ? std::numeric_limits<float>::infinity() : (distance), 2));
 
                 const float angle = atan2(yDiff, xDiff);
@@ -82,7 +82,7 @@ int main() {
                 const float acceleration = forceMag / m;
                 // std::cout << "accel: " << acceleration << std::endl;
                 const float v = electronVel[i] + acceleration * t;
-                const float s = electronVel[i] * 0.01 + 0.5 * acceleration * pow(t, 2);
+                const float s = electronVel[i] * t + 0.5 * acceleration * pow(t, 2);
                 // std::cout << "s: " << s << std::endl;
                 // std::cout << "v: " << v << std::endl;
                 xComponent += -cos(angle) * s;
