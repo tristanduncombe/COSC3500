@@ -1,0 +1,2 @@
+# Artificial Intelligence Usage
+Throughout the course of this project, AI was used to help me debug issues with my code. Anything it developed was checked by myself to be usable and was thoroughly tested.

@@ -6,6 +6,7 @@
 #include <random>
 #include "H5Cpp.h"
 using namespace H5;
+#include <chrono>
 
 const H5std_string FILE_NAME("electron_positions.h5");
 const H5std_string DATASET_NAME("positions");
@@ -19,13 +20,13 @@ int randomPos() {
 }
 
 int main() {
-    int numElectrons = 1000;
-    int numFrames = 1000000;
+    int numElectrons = 100;
+    int numFrames = 1000;
     
     // creating start positions  
     float** electronPos = (float**)malloc(sizeof(float*) * numElectrons);
     float* electronVel = (float*)malloc(sizeof(float) * numElectrons);
-
+    std::cout << "Initialising electron positions" << std::endl;
     for (int i = 0; i < numElectrons; ++i) {
         electronPos[i] = (float*)malloc(sizeof(float) * 3);
         electronPos[i][0] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
@@ -36,20 +37,21 @@ int main() {
 
     // Create HDF5 file thank you chat gpt
     H5File file(FILE_NAME, H5F_ACC_TRUNC);
-    hsize_t dims[3] = {numFrames, numElectrons, 3};
+    hsize_t dims[3] = {static_cast<hsize_t>(numFrames), static_cast<hsize_t>(numElectrons), 3};
     DataSpace dataspace(3, dims);
     DataSet dataset = file.createDataSet(DATASET_NAME, PredType::NATIVE_FLOAT, dataspace);
 
     float* frameData = new float[numElectrons * 3];
 
+    std::cout << "Begin calculating forces" << std::endl;
+    using namespace std::chrono;
+    high_resolution_clock::time_point t1 = high_resolution_clock::now();
     for (int f = 0; f < numFrames; ++f) {
-        // calculate each probability of each atom
-        // if thingy change
-        // calculate energy???????
         if (electronPos == nullptr || electronVel == nullptr) {
             std::cerr << "Memory allocation failed!" << std::endl;
             return -1;
         }
+        high_resolution_clock::time_point t3 = high_resolution_clock::now();
         for (int i = 0; i < numElectrons; ++i) {
             if (electronPos[i] == nullptr) {
                 std::cerr << "Memory allocation failed!" << std::endl;
@@ -102,16 +104,20 @@ int main() {
             // electronPos[i][2] += zComponent;
             // std::cout << "Set X Component: " << electronPos[i][0] << " Set Y Component: " << electronPos[i][1] << std::endl;
         }
-
-        hsize_t start[3] = {f, 0, 0};
-        hsize_t count[3] = {1, numElectrons, 3};
+        hsize_t start[3] = {static_cast<hsize_t>(f), 0, 0};
+        hsize_t count[3] = {1, static_cast<hsize_t>(numElectrons), 3};
         dataspace.selectHyperslab(H5S_SELECT_SET, count, start);
 
         DataSpace memspace(3, count);
 
         dataset.write(frameData, PredType::NATIVE_FLOAT, memspace, dataspace);
+        high_resolution_clock::time_point t4 = high_resolution_clock::now();
+        duration<double> time_span_34 = duration_cast<duration<double>>(t3 - t4);
+        std::cout << "Entire time loop: " + std::to_string(time_span_34.count()) << " seconds" << std::endl;
     }
-
+    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+    std::cout << "Entire time loop: " + std::to_string(time_span.count()) << " seconds" << std::endl;
     // Clean up
     delete[] frameData;
     for (int i = 0; i < numElectrons; ++i) {

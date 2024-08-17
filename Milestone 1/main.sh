@@ -1,3 +1,5 @@
 #!/bin/sh
-gcc -o electron_simulation electron_simulation.cpp -lstdc++ -o -lhdf5 -lhdf5_cpp -lm -std=c++11 
+g++ -o electron_simulation electron_simulation.cpp -lhdf5_cpp -lhdf5 -std=c++11
+
+# Run the compiled program
 ./electron_simulation
