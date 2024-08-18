@@ -76,7 +76,7 @@ int main() {
                 const float m = 9.1093837 * pow(10,-31);
                 const float k = 8.987 * pow(10, 9);
                 const float e = 1.602 * pow(10, -19);
-                const float t = 0.00001;
+                const float t = 0.01;
                 float forceMag = k * (pow(e, 2) / pow(distance == 0 ? std::numeric_limits<float>::infinity() : (distance), 2));
 
                 const float angle = atan2(yDiff, xDiff);
@@ -103,6 +103,9 @@ int main() {
             // electronPos[i][1] += yComponent;
             // electronPos[i][2] += zComponent;
             // std::cout << "Set X Component: " << electronPos[i][0] << " Set Y Component: " << electronPos[i][1] << std::endl;
+            frameData[i * 3] = electronPos[i][0];
+            frameData[i * 3 + 1] = electronPos[i][1];
+            frameData[i * 3 + 2] = electronPos[i][2];
         }
         hsize_t start[3] = {static_cast<hsize_t>(f), 0, 0};
         hsize_t count[3] = {1, static_cast<hsize_t>(numElectrons), 3};
@@ -112,7 +115,7 @@ int main() {
 
         dataset.write(frameData, PredType::NATIVE_FLOAT, memspace, dataspace);
         high_resolution_clock::time_point t4 = high_resolution_clock::now();
-        duration<double> time_span_34 = duration_cast<duration<double>>(t3 - t4);
+        duration<double> time_span_34 = duration_cast<duration<double>>(t4 - t3);
         std::cout << "Entire time loop: " + std::to_string(time_span_34.count()) << " seconds" << std::endl;
     }
     high_resolution_clock::time_point t2 = high_resolution_clock::now();
