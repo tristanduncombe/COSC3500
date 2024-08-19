@@ -78,6 +78,11 @@ int main() {
                 const float zDiff = electronPos[j][2] - electronPos[i][2];
 
                 const float distance = sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
+                
+                // arbitrarily pick a distance and ignore beyond that point
+                if (distance > 3) {
+                    continue;
+                }
                 // copilot used to fix my bad math
                 // and liv for figuring out that my force is 0ed
                 float forceMag = k * (pow(e, 2) / pow(distance == 0 ? std::numeric_limits<float>::infinity() : (distance), 2));
