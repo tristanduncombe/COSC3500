@@ -43,6 +43,14 @@ int main() {
 
     float* frameData = new float[numElectrons * 3];
 
+
+    // Constants
+
+    const float m = 9.1093837 * pow(10,-31);
+    const float k = 8.987 * pow(10, 9);
+    const float e = 1.602 * pow(10, -19);
+    const float t = 0.01;
+
     std::cout << "Begin calculating forces" << std::endl;
     using namespace std::chrono;
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
@@ -72,11 +80,6 @@ int main() {
                 const float distance = sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
                 // copilot used to fix my bad math
                 // and liv for figuring out that my force is 0ed
-                //pow(10,-31)
-                const float m = 9.1093837 * pow(10,-31);
-                const float k = 8.987 * pow(10, 9);
-                const float e = 1.602 * pow(10, -19);
-                const float t = 0.01;
                 float forceMag = k * (pow(e, 2) / pow(distance == 0 ? std::numeric_limits<float>::infinity() : (distance), 2));
 
                 const float angle = atan2(yDiff, xDiff);
@@ -85,24 +88,13 @@ int main() {
                 // std::cout << "accel: " << acceleration << std::endl;
                 const float v = electronVel[i] + acceleration * t;
                 const float s = electronVel[i] * t + 0.5 * acceleration * pow(t, 2);
-                // std::cout << "s: " << s << std::endl;
-                // std::cout << "v: " << v << std::endl;
                 xComponent += -cos(angle) * s;
                 yComponent += -sin(angle) * s;
                 zComponent += -sin(angleZ) * s;
-                // std::cout << "z " << zComponent << std::endl;
-                //std::cout << "Force magnitude: " << forceMag << std::endl;
-                //std::cout << "X Component: " << xComponent << " Y Component: " << yComponent << std::endl;
             }
-            // std::cout << "Force magnitude: " << forceMag << std::endl;
-            // std::cout << "X Component: " << xComponent << " Y Component: " << yComponent << std::endl;
             electronPos[i][0] = std::max((static_cast<float>(-10)), std::min(electronPos[i][0] + xComponent, (static_cast<float>(10))));
             electronPos[i][1] = std::max((static_cast<float>(-10)), std::min(electronPos[i][1] + yComponent, (static_cast<float>(10))));
             electronPos[i][2] = std::max((static_cast<float>(-10)), std::min(electronPos[i][2] + zComponent, (static_cast<float>(10))));
-            // electronPos[i][0] += xComponent;
-            // electronPos[i][1] += yComponent;
-            // electronPos[i][2] += zComponent;
-            // std::cout << "Set X Component: " << electronPos[i][0] << " Set Y Component: " << electronPos[i][1] << std::endl;
             frameData[i * 3] = electronPos[i][0];
             frameData[i * 3 + 1] = electronPos[i][1];
             frameData[i * 3 + 2] = electronPos[i][2];
