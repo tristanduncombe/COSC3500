@@ -116,11 +116,11 @@ int main() {
         dataset.write(frameData, PredType::NATIVE_FLOAT, memspace, dataspace);
         high_resolution_clock::time_point t4 = high_resolution_clock::now();
         duration<double> time_span_34 = duration_cast<duration<double>>(t4 - t3);
-        std::cout << "Entire time loop: " + std::to_string(time_span_34.count()) << " seconds" << std::endl;
+        std::cout << std::to_string(time_span_34.count()) << std::endl;
     }
     high_resolution_clock::time_point t2 = high_resolution_clock::now();
     duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
-    std::cout << "Entire time loop: " + std::to_string(time_span.count()) << " seconds" << std::endl;
+    std::cout << std::to_string(time_span.count()) << std::endl;
     // Clean up
     delete[] frameData;
     for (int i = 0; i < numElectrons; ++i) {
