@@ -9,9 +9,9 @@ import random
 os.makedirs('./frames', exist_ok=True)
 
 # Open the HDF5 file and read the dataset
-with h5py.File('electron_positions.h5', 'r') as f:
+with h5py.File('electron_positions.h5', 'r', encoding='utf-8') as f:
     frames = f['positions'][:]  # Read all the frames into memory
-print(frames.shape);
+print(frames.shape);    
 # List of 10 color options
 colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'orange', 'purple', 'brown']
 
