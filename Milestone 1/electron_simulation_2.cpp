@@ -11,28 +11,17 @@ using namespace H5;
 const H5std_string FILE_NAME("electron_positions.h5");
 const H5std_string DATASET_NAME("positions");
 
-int randomPos() {
-    std::random_device dev;
-    std::mt19937 rng(dev());
-    std::uniform_int_distribution<std::mt19937::result_type> dist6(-1, 1);
-
-    return dist6(rng);
-}
-
-int consistentPos() {
-    // thank you chat gpt
-    static std::mt19937 rng(42);  // Seed the random number generator with a fixed value
-    std::uniform_int_distribution<std::mt19937::result_type> dist6(-1, 1);
-
-    return dist6(rng);
-}
-
 int main(int argc, char* argv[]) {
     int numElectrons = 1000;
     int numFrames = 2500;
     // thank you chatgpt
     bool timing = false;
     bool accuracy = false;
+
+    int numGrids = 9;
+    float gridSize = 20/9;
+    float gridCenter = 20/3;
+    float* gridForce = (float*)malloc(sizeof(float) * numGrids);
 
     // Check for -timing flag
     for (int i = 1; i < argc; ++i) {
@@ -45,6 +34,13 @@ int main(int argc, char* argv[]) {
             break;
         }
     }
+
+    // Constants
+
+    const float m = 9.1093837 * pow(10,-31);
+    const float k = 8.987 * pow(10, 9);
+    const float e = 1.602 * pow(10, -19);
+    const float t = 0.001;
     
     // creating start positions  
     float** electronPos = (float**)malloc(sizeof(float*) * numElectrons);
@@ -54,11 +50,23 @@ int main(int argc, char* argv[]) {
     }
     float* electronVel = (float*)malloc(sizeof(float) * numElectrons);
     std::cout << "Initialising electron positions" << std::endl;
+
     for (int i = 0; i < numElectrons; ++i) {
         electronPos[i] = (float*)malloc(sizeof(float) * 3);
-        electronPos[i][0] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-        electronPos[i][1] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-        electronPos[i][2] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        electronPos[i][0] = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+        electronPos[i][1] = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+        electronPos[i][2] = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+
+        int cubeX = static_cast<int>(electronPos[i][0] / gridSize);
+        int cubeY = static_cast<int>(electronPos[i][1] / gridSize);
+        int cubeZ = static_cast<int>(electronPos[i][2] / gridSize);
+
+        // Calculate the index of the cube in the gridForce array
+        int cubeIndex = cubeX + cubeY * 3 + cubeZ * 9;
+
+        // Add the charge of the electron to the respective cube
+        gridForce[cubeIndex] += e;
+
         electronVel[i] = 0;
     }
 
@@ -69,13 +77,6 @@ int main(int argc, char* argv[]) {
     DataSet dataset = file.createDataSet(DATASET_NAME, PredType::NATIVE_FLOAT, dataspace);
 
     float* frameData = new float[numElectrons * 3];
-
-    // Constants
-
-    const float m = 9.1093837 * pow(10,-31);
-    const float k = 8.987 * pow(10, 9);
-    const float e = 1.602 * pow(10, -19);
-    const float t = 0.001;
     using namespace std::chrono;
     high_resolution_clock::time_point t1;
     if (timing) {
@@ -98,7 +99,8 @@ int main(int argc, char* argv[]) {
             }
             float xComponent = 0;
             float yComponent = 0;
-            float zComponent = 0;
+            float zComponent = 0; 
+
             for (int j = 0; j < numElectrons; ++ j) {
                 // std::cout << i << " " << j << std::endl;
                 if (i == j) {
@@ -126,7 +128,7 @@ int main(int argc, char* argv[]) {
                 // std::cout << "accel: " << acceleration << std::endl;
                 const float v = electronVel[i] + acceleration * t;
                 const float s = electronVel[i] * t + 0.5 * acceleration * pow(t, 2);
-                if (accuracy && forceMag < 0.00000000000001) {
+                if (accuracy && forceMag < 0.001) {
                     electronInaccuracy[i] += (-cos(angle) * s + -sin(angle) * s + -sin(angleZ) * s);
                 }
                 else {
