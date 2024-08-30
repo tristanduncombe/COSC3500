@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
                 // std::cout << "accel: " << acceleration << std::endl;
                 const float v = electronVel[i] + acceleration * t;
                 const float s = electronVel[i] * t + 0.5 * acceleration * pow(t, 2);
-                if (accuracy && forceMag < 0.00000000000001) {
+                if (accuracy) {
                     electronInaccuracy[i] += (-cos(angle) * s + -sin(angle) * s + -sin(angleZ) * s);
                 }
                 else {
