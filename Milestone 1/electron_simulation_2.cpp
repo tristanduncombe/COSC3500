@@ -101,14 +101,11 @@ int main(int argc, char* argv[]) {
             float yComponent = 0;
             float zComponent = 0; 
 
-            for (int j = 0; j < numElectrons; ++ j) {
+            for (int j = 0; j < numGrids; ++ j) {
                 // std::cout << i << " " << j << std::endl;
-                if (i == j) {
-                    continue;
-                }
-                const float xDiff = electronPos[j][0] - electronPos[i][0];
-                const float yDiff = electronPos[j][1] - electronPos[i][1];
-                const float zDiff = electronPos[j][2] - electronPos[i][2];
+                const float xDiff = gridSize*(j+1) - electronPos[i][0];
+                const float yDiff = gridSize*(j+1) - electronPos[i][1];
+                const float zDiff = gridSize*(j+1) - electronPos[i][2];
 
                 const float distance = sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
                 
@@ -118,7 +115,7 @@ int main(int argc, char* argv[]) {
                 // }
                 // copilot used to fix my bad math
                 // and liv for figuring out that my force is 0ed
-                float forceMag = k * (pow(e, 2) / pow(distance == 0 ? std::numeric_limits<float>::infinity() : (distance), 2));                
+                float forceMag = k * ((e * (gridForce[j])) / pow(distance == 0 ? std::numeric_limits<float>::infinity() : (distance), 2));                
                 // if (forceMag < 1) {
                 //     continue;
                 // }
