@@ -13,9 +13,9 @@ using namespace std::chrono;
 const H5std_string FILE_NAME("electron_positions.h5");
 const H5std_string DATASET_NAME("positions");
 
-const float k = 8.9875517873681764e9; // Coulomb's constant
-const float e = 1.602176634e-19; // Elementary charge
-const float m = 9.10938356e-31; // Electron mass
+const float k = 8.99e9; // Coulomb's constant
+const float e = 1.6e-19; // Elementary charge
+const float m = 9.11e-31; // Electron mass
 const float t = 1e-2; // Time step
 
 int getCubeIndex(float x, float y, float z, float gridSize, int gridDimX, int gridDimY, int gridDimZ) {
@@ -47,9 +47,9 @@ int main(int argc, char* argv[]) {
     bool random = true;
 
     // Define grid dimensions
-    const int gridDimX = 5;
-    const int gridDimY = 5;
-    const int gridDimZ = 5;
+    const int gridDimX = 10;
+    const int gridDimY = 10;
+    const int gridDimZ = 10;
     const int numGrids = gridDimX * gridDimY * gridDimZ;
     const float gridSize = 20.0 / gridDimX;
 
