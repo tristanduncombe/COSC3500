@@ -71,7 +71,11 @@
 
 #slide[
   == Initial Implementation: Visualisation
-  
+  #align(center)[
+    #image("animation.gif", width: 40%)
+  ]
+  #set text(18pt)
+  _Note that this is only displaying $1/10$th the frames generated!_
 ]
 
 #focus-slide[
@@ -117,7 +121,7 @@
     #image("remove_loop_chart.png", width: 40%)
   ]
   Impressive, right?
-  Well, the difference was only $8 times 10^(-6)$, which is an improvement, but not substancial
+  Well, the difference was only $8 mu"s"$ across all loops, which is an improvement, but not substantial
 ]
 
 #slide[
@@ -132,16 +136,78 @@
 ]
 
 #slide[
-  == Using Spacial Computing to Optimise Electron Interaction Simulation
+  == Exit Loops Early
+  By exiting loops early, we can avoid unncessary computations!
+
+  Within the case of the electron simulation, if we create cut-offs when the distance or force is less than a specific amount, then we can avoid computing these cases.
+
+  As the simulation progresses, this will add up!
+]
+
+#slide[
+  == Exit Loops Early: Distance
+  Given that we know that:
+
+  #align(center)[$F("applied to electron") prop 1/r^2$]
+  Once the distance is greater than an amount, then we can ignore these.
+
+  The cases, $3, 5, 7$ were considered, if the distance between the electron was greater than one of these, it was ignored.
+]
+
+#slide[
+  == Exit Loops Early: Distance Performance
+  #align(center)[
+
+  ]
+
+  Evidently, choosing to exit at 3, 5, 7 improved performance at minimum, by around 40%, but choosing 3 improved performance by 76%. 
+]
+
+#slide[
+  == Exit Loops Early: Distance Accuracy
+  #align(center)[
+
+  ]
+
+  Hence, the inaccuracy over each iteration of 0.25cm was acceptable given the 20m by 20m volume, indicating perhaps an exit of 1m or 2m may have appropriate.
+]
+
+
+#slide[
+  == Exit Loops Early: Force
+  Another way in which we could exit the loop early would be to exit if the force was below a certain amount.
+
+  The range of forces from 10N to 0.00001N at multiples of 10.
+]
+
+#slide[
+  == Exit Loops Early: Force Performance
+  #align(center)[
+
+  ]
+
+  All force cutoffs excluding 1N performed near identically as they were within 0.02s of each other, with 1N performing twice as worse.
+
+  This performance makes little sense as it is expected that the time taken decreases as the force cut-off increases (as it would exclude more iterations), however, this performance (and the accuracy) did not function as expected, and hence, this optimisation was ignored.
+]
+
+#centered-slide[
+  _Let's continue optimising!_
+]
+
+
+#slide[
+  == Spacial Computing: Chunking
 
   To Further Optimise the Simulation, Spacial Computing was used; \
   \
-  #align(center)[As $F("applied to electron") prop 1/r^2$] \
-  We can ignore some electrons that are further from the currently evaluated electron.
+  This is a technique which separtes space into chunks inorder to only consider those.
+
+  Within the context of the electron interaction simulation mutltiple grid dimensions were tested.
 ]
+
 #slide[
   == Spacial Computing: Chunking the Simulation
-
   If we consider the area within our simulation as distinct chunks we can choose to ignore specific areas and generalise across these areas;
 ]
 
