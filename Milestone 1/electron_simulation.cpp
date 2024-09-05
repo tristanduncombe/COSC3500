@@ -5,42 +5,20 @@
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
-#include <vector> // Include the vector header
+#include <vector>
 #include <cstring>
 #include "H5Cpp.h"
 #include "octree.h"
-
 using namespace H5;
 using namespace std::chrono;
-
-const H5std_string FILE_NAME("electron_positions.h5");
-const H5std_string DATASET_NAME("positions");
-
-const float k = 8.99e9; // Coulomb's constant
-const float e = 1.6e-19; // Elementary charge
-const float m = 9.11e-31; // Electron mass
-const float t = 1e-4; // Time step
-const int numFrames = 1000;
-const int numElectrons = 100;
-const int gridDimX = 5;
-const int gridDimY = 5;
-const int gridDimZ = 5;
-const int numGrids = gridDimX * gridDimY * gridDimZ;
-const float gridSize = 1.0;
-
+const int numFrames = 2500;
+const int numElectrons = 1000;
 std::vector<Vector3> electronPos(numElectrons);
 std::vector<Vector3> electronVel(numElectrons);
 
-int getCubeIndex(float x, float y, float z, float gridSize, int gridDimX, int gridDimY, int gridDimZ) {
-    x += 10;
-    y += 10;
-    z += 10;
-    int ix = static_cast<int>(x / gridSize);
-    int iy = static_cast<int>(y / gridSize);
-    int iz = static_cast<int>(z / gridSize);
-    return ix + iy * gridDimX + iz * gridDimX * gridDimY;
-}
-
+/*
+* Simple function to set position for each electron
+*/
 void initializeElectrons() {
     for (int i = 0; i < numElectrons; ++i) {
         electronPos[i] = {static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 20 - 10,
@@ -50,9 +28,14 @@ void initializeElectrons() {
     }
 }
 
+/*
+* Main loop logic, populate octree with data and calculate force
+* 
+*/
 void updateElectrons() {
     Octree octree({0.0f, 0.0f, 0.0f}, 10.0f);
 
+    // Add all electrons to octree
     for (const auto& pos : electronPos) {
         octree.insert(pos);
     }
@@ -60,9 +43,10 @@ void updateElectrons() {
     for (int i = 0; i < numElectrons; ++i) {
         Vector3 force = {0.0f, 0.0f, 0.0f};
         std::vector<Vector3> nearbyElectrons;
-        octree.query(electronPos[i], 10.0f, nearbyElectrons);
+        octree.query(electronPos[i], 5.0f, nearbyElectrons);
 
         for (const auto& pos : nearbyElectrons) {
+            // Don't consider the same electron
             if (pos.x == electronPos[i].x && pos.y == electronPos[i].y && pos.z == electronPos[i].z) continue;
 
             float dx = pos.x - electronPos[i].x;
@@ -70,7 +54,6 @@ void updateElectrons() {
             float dz = pos.z - electronPos[i].z;
             float distance = sqrt(dx * dx + dy * dy + dz * dz);
 
-            if (distance > 3) continue;
             float forceMagnitude = -(k * (e * e) / (distance * distance));
             force.x += forceMagnitude * dx / distance;
             force.y += forceMagnitude * dy / distance;
@@ -87,13 +70,18 @@ void updateElectrons() {
         electronPos[i].x = std::max(-10.0f, std::min(electronPos[i].x, 10.0f));
         electronPos[i].y = std::max(-10.0f, std::min(electronPos[i].y, 10.0f));
         electronPos[i].z = std::max(-10.0f, std::min(electronPos[i].z, 10.0f));
+        
     }
 }
 
 int main(int argc, char* argv[]) {
+    // Initialise variables
     bool timingMode = false;
+    const H5std_string FILE_NAME("electron_positions.h5");
+    const H5std_string DATASET_NAME("positions");
 
     // Parse command-line arguments
+    // Accuracy mode was removed.
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "-timing") == 0) {
             timingMode = true;
@@ -103,12 +91,11 @@ int main(int argc, char* argv[]) {
     std::srand(std::time(0));
     initializeElectrons();
 
-    // Create HDF5 file
+    // Handle HDF5 file.
     H5File file(FILE_NAME, H5F_ACC_TRUNC);
     hsize_t dims[3] = {static_cast<hsize_t>(numFrames), static_cast<hsize_t>(numElectrons), 3};
     DataSpace dataspace(3, dims);
     DataSet dataset = file.createDataSet(DATASET_NAME, PredType::NATIVE_FLOAT, dataspace);
-
     float* frameData = new float[numElectrons * 3];
 
     high_resolution_clock::time_point t1;
@@ -116,6 +103,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Begin calculating forces" << std::endl;
         t1 = high_resolution_clock::now();
     }
+
     for (int f = 0; f < numFrames; ++f) {
         high_resolution_clock::time_point t3;
         if (timingMode) {
@@ -136,6 +124,7 @@ int main(int argc, char* argv[]) {
         dataspace.selectHyperslab(H5S_SELECT_SET, count, offset);
         dataset.write(frameData, PredType::NATIVE_FLOAT, memspace, dataspace);
 
+        // 
         high_resolution_clock::time_point loop_end = high_resolution_clock::now();
         high_resolution_clock::time_point t4;
         duration<double> time_span_34;

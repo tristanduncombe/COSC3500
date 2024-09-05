@@ -3,14 +3,7 @@
 #include <array>
 #include <cmath>
 #include <algorithm>
-
-struct Vector3 {
-    float x, y, z;
-
-    bool operator==(const Vector3& other) const {
-        return x == other.x && y == other.y && z == other.z;
-    }
-};
+#include "simulation.h"
 
 class Octree {
 public:
