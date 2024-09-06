@@ -30,7 +30,6 @@ void initializeElectrons() {
 
 /*
 * Main loop logic, populate octree with data and calculate force
-* 
 */
 void updateElectrons() {
     Octree octree({0.0f, 0.0f, 0.0f}, 10.0f);
@@ -49,16 +48,18 @@ void updateElectrons() {
             // Don't consider the same electron
             if (pos.x == electronPos[i].x && pos.y == electronPos[i].y && pos.z == electronPos[i].z) continue;
 
+            // Calculate the distance
             float dx = pos.x - electronPos[i].x;
             float dy = pos.y - electronPos[i].y;
             float dz = pos.z - electronPos[i].z;
             float distance = sqrt(dx * dx + dy * dy + dz * dz);
-
+            // Calculate the force
             float forceMagnitude = -(k * (e * e) / (distance * distance));
             force.x += forceMagnitude * dx / distance;
             force.y += forceMagnitude * dy / distance;
             force.z += forceMagnitude * dz / distance;
         }
+        // Apply force
         electronVel[i].x += (force.x / m) * t;
         electronVel[i].y += (force.y / m) * t;
         electronVel[i].z += (force.z / m) * t;
@@ -88,6 +89,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Randomise and initialise the electrons
     std::srand(std::time(0));
     initializeElectrons();
 
@@ -103,7 +105,9 @@ int main(int argc, char* argv[]) {
         std::cout << "Begin calculating forces" << std::endl;
         t1 = high_resolution_clock::now();
     }
+    
 
+    // Main loop
     for (int f = 0; f < numFrames; ++f) {
         high_resolution_clock::time_point t3;
         if (timingMode) {
