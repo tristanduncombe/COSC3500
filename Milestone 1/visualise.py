@@ -1,3 +1,4 @@
+# copilot was used in the development of this file.
 import h5py
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -47,9 +48,6 @@ for i in range(0, len(frames), 10):
     plt.close()
     image_files.append(filename)
     previous_frame = frame
-
-# List to store the file names of the generated images
-
 
 # Create a list to store the images
 images = []

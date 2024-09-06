@@ -1,5 +1,5 @@
 /*
-    Common functions for both the simulation and tree. These are simple structures and constants
+ * Common functions for both the simulation and tree. These are simple structures and constants
 */
 struct Vector3 {
     float x, y, z;
