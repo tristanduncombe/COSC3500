@@ -10,20 +10,13 @@
 #include <immintrin.h>
 #include "H5Cpp.h"
 #include "octree.h"
+#include <omp.h>
 
 using namespace H5;
 using namespace std::chrono;
 
 const int numFrames = 2500;
 const int numElectrons = 1000;
-const float k = 8.99e9; // Coulomb's constant
-const float e = 1.6e-19; // Elementary charge
-const float m = 9.11e-31; // Electron mass
-const float t = 1e-2; // Time step
-
-struct Vector3 {
-    float x, y, z;
-};
 
 std::vector<Vector3> electronPos(numElectrons);
 std::vector<Vector3> electronVel(numElectrons);
@@ -45,10 +38,10 @@ void initializeElectrons() {
 * Main loop logic, populate octree with data and calculate force
 */
 void updateElectrons() {
+    omp_set_num_threads(4);
     Octree octree({0.0f, 0.0f, 0.0f}, 10.0f);
 
     // Add all electrons to octree
-    #pragma omp parallel for
     for (int i = 0; i < numElectrons; ++i) {
         octree.insert(electronPos[i]);
     }
@@ -75,21 +68,26 @@ void updateElectrons() {
             force.z += forceMagnitude * dz / distance;
         }
         // Apply force
-        electronVel[i].x += (force.x / m) * t;
-        electronVel[i].y += (force.y / m) * t;
-        electronVel[i].z += (force.z / m) * t;
+        #pragma critical 
+        {
+            electronVel[i].x += (force.x / m) * t;
+            electronVel[i].y += (force.y / m) * t;
+            electronVel[i].z += (force.z / m) * t;
 
-        electronPos[i].x += electronVel[i].x * t;
-        electronPos[i].y += electronVel[i].y * t;
-        electronPos[i].z += electronVel[i].z * t;
+            electronPos[i].x += electronVel[i].x * t;
+            electronPos[i].y += electronVel[i].y * t;
+            electronPos[i].z += electronVel[i].z * t;
 
-        electronPos[i].x = std::max(-10.0f, std::min(electronPos[i].x, 10.0f));
-        electronPos[i].y = std::max(-10.0f, std::min(electronPos[i].y, 10.0f));
-        electronPos[i].z = std::max(-10.0f, std::min(electronPos[i].z, 10.0f));
+            electronPos[i].x = std::max(-10.0f, std::min(electronPos[i].x, 10.0f));
+            electronPos[i].y = std::max(-10.0f, std::min(electronPos[i].y, 10.0f));
+            electronPos[i].z = std::max(-10.0f, std::min(electronPos[i].z, 10.0f));
+        }
+
     }
 }
 
 int main(int argc, char* argv[]) {
+    omp_set_num_threads(4);
     // Initialise variables
     bool timingMode = false;
     const H5std_string FILE_NAME("electron_positions.h5");
