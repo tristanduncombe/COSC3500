@@ -17,7 +17,7 @@ using namespace H5;
 using namespace std::chrono;
 
 const int numFrames = 2500;
-const int numElectrons = 1000;
+const int numElectrons = 5000;
 
 std::vector<Vector3> electronPos(numElectrons);
 std::vector<Vector3> electronVel(numElectrons);
@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Randomise and initialise the electrons
-    std::srand(std::time(0));
+    // std::srand(std::time(0));
     initializeElectrons();
 
     // Handle HDF5 file.
