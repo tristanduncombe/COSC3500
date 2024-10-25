@@ -11,6 +11,7 @@
 #include "H5Cpp.h"
 #include "octree.h"
 #include <omp.h>
+#include <immintrin.h>
 
 using namespace H5;
 using namespace std::chrono;
@@ -51,20 +52,47 @@ void updateElectrons() {
         std::vector<Vector3> nearbyElectrons;
         octree.query(electronPos[i], 5.0f, nearbyElectrons);
 
-        for (const auto& pos : nearbyElectrons) {
-            // Don't consider the same electron
-            if (pos.x == electronPos[i].x && pos.y == electronPos[i].y && pos.z == electronPos[i].z) continue;
+        int numNearby = nearbyElectrons.size();
+        for (int j = 0; j < numNearby; j += 8) {
+            __m256 posX = _mm256_set1_ps(electronPos[i].x);
+            __m256 posY = _mm256_set1_ps(electronPos[i].y);
+            __m256 posZ = _mm256_set1_ps(electronPos[i].z);
 
-            // Calculate the distance
-            float dx = pos.x - electronPos[i].x;
-            float dy = pos.y - electronPos[i].y;
-            float dz = pos.z - electronPos[i].z;
-            float distance = sqrt(dx * dx + dy * dy + dz * dz);
-            // Calculate the force
-            float forceMagnitude = -(k * (e * e) / (distance * distance));
-            force.x += forceMagnitude * dx / distance;
-            force.y += forceMagnitude * dy / distance;
-            force.z += forceMagnitude * dz / distance;
+            __m256 dx = _mm256_sub_ps(_mm256_loadu_ps(&nearbyElectrons[j].x), posX);
+            __m256 dy = _mm256_sub_ps(_mm256_loadu_ps(&nearbyElectrons[j].y), posY);
+            __m256 dz = _mm256_sub_ps(_mm256_loadu_ps(&nearbyElectrons[j].z), posZ);
+
+            __m256 distance = _mm256_sqrt_ps(_mm256_add_ps(_mm256_add_ps(_mm256_mul_ps(dx, dx), _mm256_mul_ps(dy, dy)), _mm256_mul_ps(dz, dz)));
+
+            __m256 forceMagnitude = _mm256_div_ps(_mm256_set1_ps(-(k * (e * e))), _mm256_mul_ps(distance, distance));
+
+            __m256 invDistance = _mm256_div_ps(_mm256_set1_ps(1.0f), distance);
+
+            __m256 forceX = _mm256_mul_ps(forceMagnitude, _mm256_mul_ps(dx, invDistance));
+            __m256 forceY = _mm256_mul_ps(forceMagnitude, _mm256_mul_ps(dy, invDistance));
+            __m256 forceZ = _mm256_mul_ps(forceMagnitude, _mm256_mul_ps(dz, invDistance));
+
+            // Sum the elements of the AVX registers
+            __m256 hsumX = _mm256_hadd_ps(forceX, forceX);
+            __m256 hsumY = _mm256_hadd_ps(forceY, forceY);
+            __m256 hsumZ = _mm256_hadd_ps(forceZ, forceZ);
+
+            __m128 hsumX128 = _mm_add_ps(_mm256_castps256_ps128(hsumX), _mm256_extractf128_ps(hsumX, 1));
+            __m128 hsumY128 = _mm_add_ps(_mm256_castps256_ps128(hsumY), _mm256_extractf128_ps(hsumY, 1));
+            __m128 hsumZ128 = _mm_add_ps(_mm256_castps256_ps128(hsumZ), _mm256_extractf128_ps(hsumZ, 1));
+
+            // Sum the final two elements
+            hsumX128 = _mm_add_ps(hsumX128, _mm_movehl_ps(hsumX128, hsumX128));
+            hsumY128 = _mm_add_ps(hsumY128, _mm_movehl_ps(hsumY128, hsumY128));
+            hsumZ128 = _mm_add_ps(hsumZ128, _mm_movehl_ps(hsumZ128, hsumZ128));
+
+            hsumX128 = _mm_add_ss(hsumX128, _mm_shuffle_ps(hsumX128, hsumX128, 0x55));
+            hsumY128 = _mm_add_ss(hsumY128, _mm_shuffle_ps(hsumY128, hsumY128, 0x55));
+            hsumZ128 = _mm_add_ss(hsumZ128, _mm_shuffle_ps(hsumZ128, hsumZ128, 0x55));
+
+            force.x += _mm_cvtss_f32(hsumX128);
+            force.y += _mm_cvtss_f32(hsumY128);
+            force.z += _mm_cvtss_f32(hsumZ128);
         }
         // Apply force
         electronVel[i].x += (force.x / m) * t;
@@ -78,7 +106,6 @@ void updateElectrons() {
         electronPos[i].x = std::max(-10.0f, std::min(electronPos[i].x, 10.0f));
         electronPos[i].y = std::max(-10.0f, std::min(electronPos[i].y, 10.0f));
         electronPos[i].z = std::max(-10.0f, std::min(electronPos[i].z, 10.0f));
-
     }
 }
 
