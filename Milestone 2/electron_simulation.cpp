@@ -19,8 +19,8 @@ using namespace std::chrono;
 const int numFrames = 2500;
 const int numElectrons = 5000;
 
-std::vector<Vector3> electronPos(numElectrons);
-std::vector<Vector3> electronVel(numElectrons);
+alignas(32) Vector3 electronPos[numElectrons];
+alignas(32) Vector3 electronVel[numElectrons];
 
 /*
 * Simple function to set position for each electron
@@ -33,6 +33,18 @@ void initializeElectrons() {
                           static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 20 - 10};
         electronVel[i] = {0.0f, 0.0f, 0.0f};
     }
+}
+
+// Not available in AVX, but neatens our code
+inline float _mm256_reduce_add_ps(__m256 x) {
+    __m128 lo = _mm256_castps256_ps128(x);
+    __m128 hi = _mm256_extractf128_ps(x, 1);
+    lo = _mm_add_ps(lo, hi);
+    __m128 shuf = _mm_movehdup_ps(lo);
+    __m128 sums = _mm_add_ps(lo, shuf);
+    shuf = _mm_movehl_ps(shuf, sums);
+    sums = _mm_add_ss(sums, shuf);
+    return _mm_cvtss_f32(sums);
 }
 
 /*
@@ -53,46 +65,78 @@ void updateElectrons() {
         octree.query(electronPos[i], 5.0f, nearbyElectrons);
 
         int numNearby = nearbyElectrons.size();
-        for (int j = 0; j < numNearby; j += 8) {
-            __m256 posX = _mm256_set1_ps(electronPos[i].x);
-            __m256 posY = _mm256_set1_ps(electronPos[i].y);
-            __m256 posZ = _mm256_set1_ps(electronPos[i].z);
+        int j = 0;
 
-            __m256 dx = _mm256_sub_ps(_mm256_loadu_ps(&nearbyElectrons[j].x), posX);
-            __m256 dy = _mm256_sub_ps(_mm256_loadu_ps(&nearbyElectrons[j].y), posY);
-            __m256 dz = _mm256_sub_ps(_mm256_loadu_ps(&nearbyElectrons[j].z), posZ);
+        // Constants for AVX calculations
+        __m256 posIX = _mm256_set1_ps(electronPos[i].x);
+        __m256 posIY = _mm256_set1_ps(electronPos[i].y);
+        __m256 posIZ = _mm256_set1_ps(electronPos[i].z);
+        __m256 k_e2 = _mm256_set1_ps(-(k * (e * e)));
+        __m256 one = _mm256_set1_ps(1.0f);
+        __m256 zero = _mm256_setzero_ps();
 
-            __m256 distance = _mm256_sqrt_ps(_mm256_add_ps(_mm256_add_ps(_mm256_mul_ps(dx, dx), _mm256_mul_ps(dy, dy)), _mm256_mul_ps(dz, dz)));
+        for (; j <= numNearby - 8; j += 8) {
+            // Load positions of nearby electrons
+            __m256 posJX = _mm256_loadu_ps(reinterpret_cast<const float*>(&nearbyElectrons[j].x));
+            __m256 posJY = _mm256_loadu_ps(reinterpret_cast<const float*>(&nearbyElectrons[j].y));
+            __m256 posJZ = _mm256_loadu_ps(reinterpret_cast<const float*>(&nearbyElectrons[j].z));
 
-            __m256 forceMagnitude = _mm256_div_ps(_mm256_set1_ps(-(k * (e * e))), _mm256_mul_ps(distance, distance));
+            // Compute distance components
+            __m256 dx = _mm256_sub_ps(posJX, posIX);
+            __m256 dy = _mm256_sub_ps(posJY, posIY);
+            __m256 dz = _mm256_sub_ps(posJZ, posIZ);
 
-            __m256 invDistance = _mm256_div_ps(_mm256_set1_ps(1.0f), distance);
+            // Compute squared distance
+            __m256 dx2 = _mm256_mul_ps(dx, dx);
+            __m256 dy2 = _mm256_mul_ps(dy, dy);
+            __m256 dz2 = _mm256_mul_ps(dz, dz);
+            __m256 distSqr = _mm256_add_ps(_mm256_add_ps(dx2, dy2), dz2);
 
-            __m256 forceX = _mm256_mul_ps(forceMagnitude, _mm256_mul_ps(dx, invDistance));
-            __m256 forceY = _mm256_mul_ps(forceMagnitude, _mm256_mul_ps(dy, invDistance));
-            __m256 forceZ = _mm256_mul_ps(forceMagnitude, _mm256_mul_ps(dz, invDistance));
+            __m256 distance = _mm256_sqrt_ps(distSqr);
 
-            // Sum the elements of the AVX registers
-            __m256 hsumX = _mm256_hadd_ps(forceX, forceX);
-            __m256 hsumY = _mm256_hadd_ps(forceY, forceY);
-            __m256 hsumZ = _mm256_hadd_ps(forceZ, forceZ);
+            // Avoid division by zero
+            __m256 mask = _mm256_cmp_ps(distance, zero, _CMP_GT_OQ);
+            __m256 invDist = _mm256_div_ps(one, distance);
 
-            __m128 hsumX128 = _mm_add_ps(_mm256_castps256_ps128(hsumX), _mm256_extractf128_ps(hsumX, 1));
-            __m128 hsumY128 = _mm_add_ps(_mm256_castps256_ps128(hsumY), _mm256_extractf128_ps(hsumY, 1));
-            __m128 hsumZ128 = _mm_add_ps(_mm256_castps256_ps128(hsumZ), _mm256_extractf128_ps(hsumZ, 1));
+            // Compute force magnitude
+            __m256 forceMag = _mm256_div_ps(k_e2, distSqr);
 
-            // Sum the final two elements
-            hsumX128 = _mm_add_ps(hsumX128, _mm_movehl_ps(hsumX128, hsumX128));
-            hsumY128 = _mm_add_ps(hsumY128, _mm_movehl_ps(hsumY128, hsumY128));
-            hsumZ128 = _mm_add_ps(hsumZ128, _mm_movehl_ps(hsumZ128, hsumZ128));
+            // Compute force components
+            __m256 forceX = _mm256_mul_ps(forceMag, dx);
+            __m256 forceY = _mm256_mul_ps(forceMag, dy);
+            __m256 forceZ = _mm256_mul_ps(forceMag, dz);
 
-            hsumX128 = _mm_add_ss(hsumX128, _mm_shuffle_ps(hsumX128, hsumX128, 0x55));
-            hsumY128 = _mm_add_ss(hsumY128, _mm_shuffle_ps(hsumY128, hsumY128, 0x55));
-            hsumZ128 = _mm_add_ss(hsumZ128, _mm_shuffle_ps(hsumZ128, hsumZ128, 0x55));
+            // Apply mask to ignore division by zero results
+            forceX = _mm256_blendv_ps(zero, forceX, mask);
+            forceY = _mm256_blendv_ps(zero, forceY, mask);
+            forceZ = _mm256_blendv_ps(zero, forceZ, mask);
 
-            force.x += _mm_cvtss_f32(hsumX128);
-            force.y += _mm_cvtss_f32(hsumY128);
-            force.z += _mm_cvtss_f32(hsumZ128);
+            // Sum the force components
+            float fx[8], fy[8], fz[8];
+            _mm256_storeu_ps(fx, forceX);
+            _mm256_storeu_ps(fy, forceY);
+            _mm256_storeu_ps(fz, forceZ);
+
+            for (int k = 0; k < 8; ++k) {
+                force.x += fx[k];
+                force.y += fy[k];
+                force.z += fz[k];
+            }
+        }
+
+        // Handle remaining electrons
+        for (; j < numNearby; ++j) {
+            float dx = nearbyElectrons[j].x - electronPos[i].x;
+            float dy = nearbyElectrons[j].y - electronPos[i].y;
+            float dz = nearbyElectrons[j].z - electronPos[i].z;
+            float distSqr = dx * dx + dy * dy + dz * dz;
+
+            if (distSqr > 0.0f) {
+                float forceMag = -(k * (e * e)) / distSqr;
+                force.x += forceMag * dx;
+                force.y += forceMag * dy;
+                force.z += forceMag * dz;
+            }
         }
         // Apply force
         electronVel[i].x += (force.x / m) * t;
