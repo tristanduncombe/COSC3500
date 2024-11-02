@@ -16,6 +16,11 @@
 using namespace H5;
 using namespace std::chrono;
 
+/*
+* Main runtime of simulation, AI was used in the development of this file.
+*/
+
+
 // Function to initialize electrons
 void initializeElectrons(int numLocalElectrons, Vector3* electronPosLocal, Vector3* electronVelLocal) {
     int rank;
