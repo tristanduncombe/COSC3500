@@ -16,9 +16,6 @@
 using namespace H5;
 using namespace std::chrono;
 
-const int numFrames = 2500;
-const int numElectrons = 5000;
-
 // Function to initialize electrons
 void initializeElectrons(int numLocalElectrons, Vector3* electronPosLocal, Vector3* electronVelLocal) {
     int rank;
@@ -154,14 +151,21 @@ int main(int argc, char* argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+    int numFrames = 2500;
+    int numElectrons = 1000;
     bool timingMode = false;
-
+    bool hdf5Output = true;
     const H5std_string FILE_NAME("electron_positions.h5");
     const H5std_string DATASET_NAME("positions");
-
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "-timing") == 0) {
             timingMode = true;
+        } else if (std::strcmp(argv[i], "-frames") == 0 && i + 1 < argc) {
+            numFrames = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "-electrons") == 0 && i + 1 < argc) {
+            numElectrons = std::atoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "-no-hdf5") == 0) {
+            hdf5Output = false;
         }
     }
 
@@ -186,7 +190,7 @@ int main(int argc, char* argv[]) {
     DataSpace* dataspace = nullptr;
     float* frameData = nullptr;
 
-    if (rank == 0) {
+    if (hdf5Output && rank == 0) {
         file = new H5File(FILE_NAME, H5F_ACC_TRUNC);
         hsize_t dims[3] = {static_cast<hsize_t>(numFrames), static_cast<hsize_t>(numElectrons), 3};
         dataspace = new DataSpace(3, dims);
@@ -229,19 +233,21 @@ int main(int argc, char* argv[]) {
                         0, MPI_COMM_WORLD);
 
             // Prepare data for HDF5
-            #pragma omp parallel for
-            for (int i = 0; i < numElectrons; ++i) {
-                frameData[i * 3] = allElectronPos[i].x;
-                frameData[i * 3 + 1] = allElectronPos[i].y;
-                frameData[i * 3 + 2] = allElectronPos[i].z;
-            }
+            if (hdf5Output) {
+                #pragma omp parallel for
+                for (int i = 0; i < numElectrons; ++i) {
+                    frameData[i * 3] = allElectronPos[i].x;
+                    frameData[i * 3 + 1] = allElectronPos[i].y;
+                    frameData[i * 3 + 2] = allElectronPos[i].z;
+                }
 
-            // Write frame data to HDF5 file
-            hsize_t offset[3] = {static_cast<hsize_t>(f), 0, 0};
-            hsize_t count[3] = {1, static_cast<hsize_t>(numElectrons), 3};
-            DataSpace memspace(3, count);
-            dataspace->selectHyperslab(H5S_SELECT_SET, count, offset);
-            dataset->write(frameData, PredType::NATIVE_FLOAT, memspace, *dataspace);
+                // Write frame data to HDF5 file
+                hsize_t offset[3] = {static_cast<hsize_t>(f), 0, 0};
+                hsize_t count[3] = {1, static_cast<hsize_t>(numElectrons), 3};
+                DataSpace memspace(3, count);
+                dataspace->selectHyperslab(H5S_SELECT_SET, count, offset);
+                dataset->write(frameData, PredType::NATIVE_FLOAT, memspace, *dataspace);
+            }
 
             high_resolution_clock::time_point loop_end = high_resolution_clock::now();
             if (rank == 0 && timingMode) {
